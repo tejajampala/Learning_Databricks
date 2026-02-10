@@ -1,0 +1,55 @@
+# Manual trigger for this pipeline, as it is intended to be run manually when needed.
+trigger: none
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+parameters:
+  - name: env
+    displayName: 'Environment'
+    type: string
+    default: 'dev'
+    values:
+      - dev
+      - qa
+  - name: catalog
+    displayName: 'Databricks Catalog'
+    type: string
+    default: ''
+
+stages:
+  - stage: OnRelease
+    displayName: 'Deploy to Databricks'
+    variables:
+      - group: ${{parameters.env}}_variables
+
+    jobs:
+    - job: ${{parameters.env}}ReleaseJob
+      displayName: 'Deploy to ${{parameters.env}}'
+      steps:
+        - checkout: self
+          displayName: 'Checkout Branch: $(Build.SourceBranchName)'
+      
+        - script: |
+            echo Installing Databricks CLI...
+            curl -fsSL https://raw.githubusercontent.com/databricks/databricks-cli/master/install.sh | sh
+          displayName: 'Install Databricks CLI'
+
+        - script: |
+            echo "[azure-sp]" > ~/.databrickscfg
+            echo "host = $(DATABRICKS_HOST)" >> ~/.databrickscfg
+            echo "client_id = $(CLIENT_ID)" >> ~/.databrickscfg
+            echo "client_secret = $(CLIENT_SECRET)" >> ~/.databrickscfg
+          displayName: 'Setup M2M profile for CLI Authentication'
+
+        - script: |
+            databricks auth profiles
+          displayName: 'Verify Databricks CLI Authentication for ${{parameters.env}} environment'
+        
+        - script: |
+            databricks bundle validate --target ${{parameters.env}} --profile azure-sp --var ${{parameters.catalog}}
+          displayName: 'Validate Databricks Bundle for ${{parameters.env}} environment'
+
+        - script: |
+            databricks bundle summary --target ${{parameters.env}} --profile azure-sp --var ${{parameters.catalog}}
+          displayName: 'Summary of Databricks Bundle for ${{parameters.env}} environment'

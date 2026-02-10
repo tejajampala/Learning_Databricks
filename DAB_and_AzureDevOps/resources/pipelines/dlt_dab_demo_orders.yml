@@ -1,0 +1,12 @@
+resources:
+  pipelines:
+    pipeline_dlt_orders_pipeline:
+      name: dlt_orders_pipeline
+      libraries:
+        - glob:
+            include: ../notebooks/dlt_dab_demo_orders
+      schema: ${resources.schemas.bronze_schema.name}
+      photon: true
+      catalog: ${resources.schemas.bronze_schema.catalog_name}
+      serverless: true
+      root_path: ../notebooks
